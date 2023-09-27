@@ -95,10 +95,10 @@ void rt_hw_board_init()
 }
 
 #ifdef RT_USING_MSH
-static int pico_reset(int argc, char *argv[])
+static int pico_reboot(int argc, char *argv[])
 {
     reset_usb_boot(0, 0);
     return 0;
 }
-MSH_CMD_EXPORT(pico_reset, Reset Pico to BOOTSEL mode);
+MSH_CMD_EXPORT_ALIAS(pico_reboot, reboot, reset Pico to BOOTSEL mode);
 #endif
