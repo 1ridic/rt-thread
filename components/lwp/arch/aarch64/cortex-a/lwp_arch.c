@@ -7,6 +7,7 @@
  * Date           Author       Notes
  * 2021-05-18     Jesven       first version
  * 2023-07-16     Shell        Move part of the codes to C from asm in signal handling
+ * 2023-10-16     Shell        Support a new backtrace framework
  */
 
 #include <armv8.h>
@@ -14,7 +15,7 @@
 #include <rtthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <lwp_signal.h>
+#include <lwp_internal.h>
 
 #ifdef ARCH_MM_MMU
 
@@ -31,22 +32,20 @@ int arch_user_space_init(struct rt_lwp *lwp)
 {
     size_t *mmu_table;
 
-    mmu_table = (size_t *)rt_pages_alloc_ext(0, PAGE_ANY_AVAILABLE);
-    if (!mmu_table)
+    mmu_table = rt_hw_mmu_pgtbl_create();
+    if (mmu_table)
+    {
+        lwp->end_heap = USER_HEAP_VADDR;
+        lwp->aspace = rt_aspace_create(
+            (void *)USER_VADDR_START, USER_VADDR_TOP - USER_VADDR_START, mmu_table);
+        if (!lwp->aspace)
+        {
+            return -RT_ERROR;
+        }
+    }
+    else
     {
         return -RT_ENOMEM;
-    }
-
-    lwp->end_heap = USER_HEAP_VADDR;
-
-    memset(mmu_table, 0, ARCH_PAGE_SIZE);
-    rt_hw_cpu_dcache_ops(RT_HW_CACHE_FLUSH, mmu_table, ARCH_PAGE_SIZE);
-
-    lwp->aspace = rt_aspace_create(
-        (void *)USER_VADDR_START, USER_VADDR_TOP - USER_VADDR_START, mmu_table);
-    if (!lwp->aspace)
-    {
-        return -RT_ERROR;
     }
 
     return 0;
@@ -162,4 +161,26 @@ void *arch_signal_ucontext_save(rt_base_t user_sp, siginfo_t *psiginfo,
     }
 
     return new_sp;
+}
+
+int arch_backtrace_uthread(rt_thread_t thread)
+{
+    struct rt_hw_backtrace_frame frame;
+    struct rt_hw_exp_stack *stack;
+
+    if (thread && thread->lwp)
+    {
+        stack = thread->user_ctx.ctx;
+        if ((long)stack > (unsigned long)thread->stack_addr
+            && (long)stack < (unsigned long)thread->stack_addr + thread->stack_size)
+        {
+            frame.pc = stack->pc;
+            frame.fp = stack->x29;
+            lwp_backtrace_frame(thread, &frame);
+            return 0;
+        }
+        else
+            return -1;
+    }
+    return -1;
 }

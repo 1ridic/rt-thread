@@ -19,6 +19,7 @@
  * 2022-06-04     Meco Man     remove strnlen
  * 2023-05-20     Bernard      add rtatomic.h header file to included files.
  * 2023-06-30     ChuShicheng  move debug check from the rtdebug.h
+ * 2023-10-16     Shell        Support a new backtrace framework
  */
 
 #ifndef __RT_THREAD_H__
@@ -384,6 +385,16 @@ rt_err_t rt_mutex_take_interruptible(rt_mutex_t mutex, rt_int32_t time);
 rt_err_t rt_mutex_take_killable(rt_mutex_t mutex, rt_int32_t time);
 rt_err_t rt_mutex_release(rt_mutex_t mutex);
 rt_err_t rt_mutex_control(rt_mutex_t mutex, int cmd, void *arg);
+
+rt_inline rt_thread_t rt_mutex_get_owner(rt_mutex_t mutex)
+{
+    return mutex->owner;
+}
+rt_inline rt_ubase_t rt_mutex_get_hold(rt_mutex_t mutex)
+{
+    return mutex->hold;
+}
+
 #endif /* RT_USING_MUTEX */
 
 #ifdef RT_USING_EVENT
@@ -648,6 +659,11 @@ void rt_components_board_init(void);
 #else
 int rt_kprintf(const char *fmt, ...);
 void rt_kputs(const char *str);
+
+rt_err_t rt_backtrace(void);
+rt_err_t rt_backtrace_thread(rt_thread_t thread);
+rt_err_t rt_backtrace_frame(struct rt_hw_backtrace_frame *frame);
+
 #endif /* RT_USING_CONSOLE */
 
 int rt_vsprintf(char *dest, const char *format, va_list arg_ptr);
