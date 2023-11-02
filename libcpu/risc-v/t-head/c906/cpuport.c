@@ -118,7 +118,7 @@ void rt_hw_cpu_shutdown(void)
 
 int rt_hw_cpu_id(void)
 {
-    return 0;   /* d1 has one core */
+    return read_csr(mhartid);
 }
 
 void rt_hw_set_process_id(int pid)
